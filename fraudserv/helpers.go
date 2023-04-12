@@ -8,7 +8,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 
-	"github.com/celestiaorg/celestia-node/libs/fraud"
+	"github.com/celestiaorg/go-fraud"
 )
 
 func PubsubTopicID(fraudType, networkID string) string {

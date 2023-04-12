@@ -10,7 +10,7 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	q "github.com/ipfs/go-datastore/query"
 
-	"github.com/celestiaorg/celestia-node/libs/fraud"
+	"github.com/celestiaorg/go-fraud"
 )
 
 var (

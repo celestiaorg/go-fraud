@@ -3,7 +3,7 @@ package fraudtest
 import (
 	"context"
 
-	"github.com/celestiaorg/celestia-node/libs/fraud"
+	"github.com/celestiaorg/go-fraud"
 )
 
 type DummyService struct{}

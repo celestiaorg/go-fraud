@@ -6,7 +6,7 @@ import (
 
 	"github.com/celestiaorg/go-header"
 
-	"github.com/celestiaorg/celestia-node/libs/fraud"
+	"github.com/celestiaorg/go-fraud"
 )
 
 func init() {

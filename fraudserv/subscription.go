@@ -7,7 +7,7 @@ import (
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"github.com/celestiaorg/celestia-node/libs/fraud"
+	"github.com/celestiaorg/go-fraud"
 )
 
 // subscription wraps pubsub subscription and handles Fraud Proof from the pubsub topic.

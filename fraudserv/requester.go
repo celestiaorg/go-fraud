@@ -9,7 +9,7 @@ import (
 
 	"github.com/celestiaorg/go-libp2p-messenger/serde"
 
-	pb "github.com/celestiaorg/celestia-node/libs/fraud/fraudserv/pb"
+	pb "github.com/celestiaorg/go-fraud/fraudserv/pb"
 )
 
 const (

@@ -10,7 +10,7 @@ import (
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/require"
 
-	"github.com/celestiaorg/celestia-node/libs/fraud/fraudtest"
+	"github.com/celestiaorg/go-fraud/fraudtest"
 )
 
 func TestStore_Put(t *testing.T) {

@@ -15,7 +15,7 @@ import (
 	"github.com/celestiaorg/go-header"
 	"github.com/celestiaorg/go-header/headertest"
 
-	"github.com/celestiaorg/celestia-node/libs/fraud/fraudtest"
+	"github.com/celestiaorg/go-fraud/fraudtest"
 )
 
 func TestService_SubscribeBroadcastValid(t *testing.T) {
