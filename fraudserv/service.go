@@ -106,6 +106,10 @@ func (f *ProofService) Start(context.Context) error {
 // Stop removes the stream handler and cancels the underlying ProofService
 func (f *ProofService) Stop(context.Context) (err error) {
 	f.host.RemoveStreamHandler(protocolID(f.networkID))
+	for tp, topic := range f.topics {
+		delete(f.topics, tp)
+		err = errors.Join(topic.Close())
+	}
 	f.cancel()
 	return
 }
