@@ -9,6 +9,9 @@ import (
 // HeaderFetcher aliases a function that is used to fetch an ExtendedHeader from store by height.
 type HeaderFetcher func(context.Context, uint64) (header.Header, error)
 
+// StateMachineVerifier is a function that is passed to Proof.Validate for executing state machine verification logic
+type StateMachineVerifier func(fraud Proof) (bool, error)
+
 // ProofUnmarshaler aliases a function that parses data to `Proof`.
 type ProofUnmarshaler func([]byte) (Proof, error)
 

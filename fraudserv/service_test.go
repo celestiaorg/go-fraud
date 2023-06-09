@@ -12,6 +12,7 @@ import (
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/celestiaorg/go-fraud"
 	"github.com/celestiaorg/go-header"
 	"github.com/celestiaorg/go-header/headertest"
 
@@ -180,6 +181,9 @@ func newTestServiceWithHost(ctx context.Context, t *testing.T, host host.Host, e
 		host,
 		func(ctx context.Context, u uint64) (header.Header, error) {
 			return store.GetByHeight(ctx, u)
+		},
+		func(fraudProof fraud.Proof) (bool, error) {
+			return true, nil
 		},
 		sync.MutexWrap(datastore.NewMapDatastore()),
 		enabledSyncer,

@@ -42,7 +42,7 @@ func TestStore_GetAll(t *testing.T) {
 	proofs, err := getAll(ctx, proofStore, proof.Type())
 	require.NoError(t, err)
 	require.NotEmpty(t, proofs)
-	require.NoError(t, proof.Validate(nil))
+	require.NoError(t, proof.Validate(nil, nil))
 }
 
 func Test_GetAllFailed(t *testing.T) {

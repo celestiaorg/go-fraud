@@ -44,10 +44,11 @@ type ProofService struct {
 	storesLk sync.RWMutex
 	stores   map[fraud.ProofType]datastore.Datastore
 
-	pubsub *pubsub.PubSub
-	host   host.Host
-	getter fraud.HeaderFetcher
-	ds     datastore.Datastore
+	pubsub    *pubsub.PubSub
+	host      host.Host
+	getter    fraud.HeaderFetcher
+	smVerifer fraud.StateMachineVerifier
+	ds        datastore.Datastore
 
 	syncerEnabled bool
 }
@@ -56,6 +57,7 @@ func NewProofService(
 	p *pubsub.PubSub,
 	host host.Host,
 	getter fraud.HeaderFetcher,
+	smVerifer fraud.StateMachineVerifier,
 	ds datastore.Datastore,
 	syncerEnabled bool,
 	networkID string,
@@ -64,6 +66,7 @@ func NewProofService(
 		pubsub:        p,
 		host:          host,
 		getter:        getter,
+		smVerifer:     smVerifer,
 		topics:        make(map[fraud.ProofType]*pubsub.Topic),
 		stores:        make(map[fraud.ProofType]datastore.Datastore),
 		ds:            ds,
@@ -183,7 +186,7 @@ func (f *ProofService) processIncoming(
 	}
 	// validate the fraud proof.
 	// Peer will be added to black list if the validation fails.
-	err = proof.Validate(extHeader)
+	err = proof.Validate(extHeader, f.smVerifer)
 	if err != nil {
 		log.Errorw("proof validation err: ",
 			"err", err, "proofType", proof.Type(), "height", proof.Height())
