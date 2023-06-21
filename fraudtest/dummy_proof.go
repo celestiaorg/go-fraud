@@ -37,7 +37,7 @@ func (m *DummyProof) Height() uint64 {
 	return 1
 }
 
-func (m *DummyProof) Validate(header.Header, fraud.StateMachineVerifier) error {
+func (m *DummyProof) Validate(header.Header) error {
 	if !m.Valid {
 		return errors.New("DummyProof: proof is not valid")
 	}

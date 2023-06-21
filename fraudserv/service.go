@@ -47,7 +47,7 @@ type ProofService struct {
 	pubsub    *pubsub.PubSub
 	host      host.Host
 	getter    fraud.HeaderFetcher
-	smVerifer fraud.StateMachineVerifier
+	verifiers map[fraud.ProofType]fraud.Verifier
 	ds        datastore.Datastore
 
 	syncerEnabled bool
@@ -57,7 +57,6 @@ func NewProofService(
 	p *pubsub.PubSub,
 	host host.Host,
 	getter fraud.HeaderFetcher,
-	smVerifer fraud.StateMachineVerifier,
 	ds datastore.Datastore,
 	syncerEnabled bool,
 	networkID string,
@@ -66,7 +65,7 @@ func NewProofService(
 		pubsub:        p,
 		host:          host,
 		getter:        getter,
-		smVerifer:     smVerifer,
+		verifiers:     make(map[fraud.ProofType]fraud.Verifier),
 		topics:        make(map[fraud.ProofType]*pubsub.Topic),
 		stores:        make(map[fraud.ProofType]datastore.Datastore),
 		ds:            ds,
@@ -141,6 +140,14 @@ func (f *ProofService) Broadcast(ctx context.Context, p fraud.Proof) error {
 	return t.Publish(ctx, bin)
 }
 
+func (f *ProofService) AddVerifier(proofType fraud.ProofType, verifier fraud.Verifier) error {
+	if _, ok := f.verifiers[proofType]; ok {
+		return fmt.Errorf("verifier for proof type %s already exist", proofType)
+	}
+	f.verifiers[proofType] = verifier
+	return nil
+}
+
 // processIncoming encompasses the logic for validating fraud proofs.
 func (f *ProofService) processIncoming(
 	ctx context.Context,
@@ -184,9 +191,23 @@ func (f *ProofService) processIncoming(
 			"err", err, "proofType", proof.Type(), "height", proof.Height())
 		return pubsub.ValidationIgnore
 	}
+
+	// execute the verifier for proof type if exists
+	if verifier, ok := f.verifiers[proofType]; ok {
+		status, err := verifier(proof)
+		if err != nil {
+			log.Errorw("failed to run the verifier, err:", err, "proofType", proof.Type())
+			return pubsub.ValidationReject
+		}
+		if !status {
+			log.Errorw("failed to verify fraud proof for proofType", proof.Type())
+			return pubsub.ValidationReject
+		}
+	}
+
 	// validate the fraud proof.
 	// Peer will be added to black list if the validation fails.
-	err = proof.Validate(extHeader, f.smVerifer)
+	err = proof.Validate(extHeader)
 	if err != nil {
 		log.Errorw("proof validation err: ",
 			"err", err, "proofType", proof.Type(), "height", proof.Height())
