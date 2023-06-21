@@ -44,15 +44,13 @@ type ProofService struct {
 	storesLk sync.RWMutex
 	stores   map[fraud.ProofType]datastore.Datastore
 
-	pubsub *pubsub.PubSub
-	host   host.Host
-	getter fraud.HeaderFetcher
-
 	verifiersLk sync.RWMutex
 	verifiers   map[fraud.ProofType]fraud.Verifier
 
-	ds datastore.Datastore
-
+	pubsub        *pubsub.PubSub
+	host          host.Host
+	getter        fraud.HeaderFetcher
+	ds            datastore.Datastore
 	syncerEnabled bool
 }
 
@@ -204,11 +202,11 @@ func (f *ProofService) processIncoming(
 	if ok {
 		status, err := verifier(proof)
 		if err != nil {
-			log.Errorw("failed to run the verifier, err:", err, "proofType", proof.Type())
+			log.Errorw("failed to run the verifier", "err", err, "proofType", proof.Type())
 			return pubsub.ValidationReject
 		}
 		if !status {
-			log.Errorw("failed to verify fraud proof for proofType", proof.Type())
+			log.Errorw("invalid fraud proof", "proofType", proof.Type())
 			return pubsub.ValidationReject
 		}
 	}

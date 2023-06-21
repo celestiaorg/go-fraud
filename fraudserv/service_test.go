@@ -2,6 +2,7 @@ package fraudserv
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -27,9 +28,6 @@ func TestService_SubscribeBroadcastValid(t *testing.T) {
 	require.NoError(t, serv.Start(ctx))
 
 	fraud := fraudtest.NewValidProof()
-	serv.AddVerifier(fraud.Type(), func(fraudProof gofraud.Proof) (bool, error) {
-		return true, nil
-	})
 	sub, err := serv.Subscribe(fraud.Type())
 	require.NoError(t, err)
 	defer sub.Cancel()
@@ -37,6 +35,47 @@ func TestService_SubscribeBroadcastValid(t *testing.T) {
 	require.NoError(t, serv.Broadcast(ctx, fraud))
 	_, err = sub.Proof(ctx)
 	require.NoError(t, err)
+}
+
+func TestService_SubscribeBroadcastWithVerifiers(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	t.Cleanup(cancel)
+
+	serv := newTestService(ctx, t, false)
+	require.NoError(t, serv.Start(ctx))
+
+	fraud := fraudtest.NewValidProof()
+	require.NoError(t, serv.AddVerifier(fraud.Type(), func(fraudProof gofraud.Proof) (bool, error) {
+		return true, nil
+	}))
+
+	// test for error while adding the verifier for the second time
+	require.Error(t, serv.AddVerifier(fraud.Type(), func(fraudProof gofraud.Proof) (bool, error) {
+		return true, nil
+	}))
+	sub, err := serv.Subscribe(fraud.Type())
+	require.NoError(t, err)
+	defer sub.Cancel()
+
+	require.NoError(t, serv.Broadcast(ctx, fraud))
+	_, err = sub.Proof(ctx)
+	require.NoError(t, err)
+
+	// test for invalid fraud proof verifier
+	serv = newTestService(ctx, t, false)
+	require.NoError(t, serv.Start(ctx))
+	require.NoError(t, serv.AddVerifier(fraud.Type(), func(fraudProof gofraud.Proof) (bool, error) {
+		return false, nil
+	}))
+	require.Error(t, serv.Broadcast(ctx, fraud))
+
+	// test for error case of fraud proof verifier
+	serv = newTestService(ctx, t, false)
+	require.NoError(t, serv.Start(ctx))
+	require.NoError(t, serv.AddVerifier(fraud.Type(), func(fraudProof gofraud.Proof) (bool, error) {
+		return true, errors.New("throws error")
+	}))
+	require.Error(t, serv.Broadcast(ctx, fraud))
 }
 
 func TestService_SubscribeBroadcastInvalid(t *testing.T) {

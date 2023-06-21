@@ -38,6 +38,10 @@ type Broadcaster interface {
 type Subscriber interface {
 	// Subscribe allows to subscribe on a Proof pub sub topic by its type.
 	Subscribe(ProofType) (Subscription, error)
+	// AddVerifier allows for supplying additional verification logic which
+	// will be run as part of processing the incoming fraud proof.
+	// This only supplements the main validation done by Proof.Validate
+	AddVerifier(ProofType, Verifier) error
 }
 
 // Getter encompasses the behavior to fetch stored fraud proofs.
