@@ -199,8 +199,9 @@ func (f *ProofService) processIncoming(
 
 	// execute the verifier for proof type if exists
 	f.verifiersLk.RLock()
-	defer f.verifiersLk.RUnlock()
-	if verifier, ok := f.verifiers[proofType]; ok {
+	verifier, ok := f.verifiers[proofType]
+	f.verifiersLk.RUnlock()
+	if ok {
 		status, err := verifier(proof)
 		if err != nil {
 			log.Errorw("failed to run the verifier, err:", err, "proofType", proof.Type())
