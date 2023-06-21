@@ -44,11 +44,14 @@ type ProofService struct {
 	storesLk sync.RWMutex
 	stores   map[fraud.ProofType]datastore.Datastore
 
-	pubsub    *pubsub.PubSub
-	host      host.Host
-	getter    fraud.HeaderFetcher
-	verifiers map[fraud.ProofType]fraud.Verifier
-	ds        datastore.Datastore
+	pubsub *pubsub.PubSub
+	host   host.Host
+	getter fraud.HeaderFetcher
+
+	verifiersLk sync.RWMutex
+	verifiers   map[fraud.ProofType]fraud.Verifier
+
+	ds datastore.Datastore
 
 	syncerEnabled bool
 }
@@ -141,10 +144,12 @@ func (f *ProofService) Broadcast(ctx context.Context, p fraud.Proof) error {
 }
 
 func (f *ProofService) AddVerifier(proofType fraud.ProofType, verifier fraud.Verifier) error {
+	f.verifiersLk.Lock()
 	if _, ok := f.verifiers[proofType]; ok {
 		return fmt.Errorf("verifier for proof type %s already exist", proofType)
 	}
 	f.verifiers[proofType] = verifier
+	f.verifiersLk.Unlock()
 	return nil
 }
 
@@ -193,6 +198,7 @@ func (f *ProofService) processIncoming(
 	}
 
 	// execute the verifier for proof type if exists
+	f.verifiersLk.Lock()
 	if verifier, ok := f.verifiers[proofType]; ok {
 		status, err := verifier(proof)
 		if err != nil {
@@ -204,6 +210,7 @@ func (f *ProofService) processIncoming(
 			return pubsub.ValidationReject
 		}
 	}
+	f.verifiersLk.Unlock()
 
 	// validate the fraud proof.
 	// Peer will be added to black list if the validation fails.
