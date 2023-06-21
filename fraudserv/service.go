@@ -145,11 +145,11 @@ func (f *ProofService) Broadcast(ctx context.Context, p fraud.Proof) error {
 
 func (f *ProofService) AddVerifier(proofType fraud.ProofType, verifier fraud.Verifier) error {
 	f.verifiersLk.Lock()
+	defer f.verifiersLk.Unlock()
 	if _, ok := f.verifiers[proofType]; ok {
 		return fmt.Errorf("verifier for proof type %s already exist", proofType)
 	}
 	f.verifiers[proofType] = verifier
-	f.verifiersLk.Unlock()
 	return nil
 }
 
@@ -198,7 +198,8 @@ func (f *ProofService) processIncoming(
 	}
 
 	// execute the verifier for proof type if exists
-	f.verifiersLk.Lock()
+	f.verifiersLk.RLock()
+	defer f.verifiersLk.RUnlock()
 	if verifier, ok := f.verifiers[proofType]; ok {
 		status, err := verifier(proof)
 		if err != nil {
@@ -210,7 +211,6 @@ func (f *ProofService) processIncoming(
 			return pubsub.ValidationReject
 		}
 	}
-	f.verifiersLk.Unlock()
 
 	// validate the fraud proof.
 	// Peer will be added to black list if the validation fails.
