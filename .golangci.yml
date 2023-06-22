@@ -4,7 +4,7 @@ run:
 linters:
   enable:
     - bodyclose
-      # - depguard - TODO: disabling for now, should re-enable but need to understand how to fix errors
+    # - depguard - TODO: disabling for now, should re-enable
     - dogsled
     - dupl
     - errcheck

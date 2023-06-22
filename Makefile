@@ -40,6 +40,7 @@ fmt:
 ## lint: Linting *.go files using golangci-lint. Look for .golangci.yml for the list of linters. Also lint *.md files using markdownlint.
 lint: 
 	@echo "--> Running linter"
+	@yamllint --no-warnings .
 	@golangci-lint run
 	@cfmt -m=100 ./...
 .PHONY: lint

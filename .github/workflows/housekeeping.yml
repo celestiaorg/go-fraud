@@ -34,4 +34,3 @@ jobs:
         run: gh pr edit ${{ env.PR }} --add-assignee ${{ env.CREATOR }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

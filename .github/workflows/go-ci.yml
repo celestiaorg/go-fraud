@@ -4,7 +4,7 @@ on:
   workflow_call:
 
 env:
-  GO_VERSION: '1.20'
+  GO_VERSION: "1.20"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -63,4 +63,3 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.txt
-

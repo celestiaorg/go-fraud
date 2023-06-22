@@ -14,11 +14,11 @@ reviewers:
     node:
       - team:celestia-node
 files:
-  '**':
+  "**":
     - code-owners
     - rollkit
     - node
-  '.github/**':
+  ".github/**":
     - devops
 options:
   ignore_draft: true
