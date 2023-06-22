@@ -1,0 +1,27 @@
+reviewers:
+  defaults:
+    - code-owners
+  groups:
+    code-owners:
+      - Nashqueue
+      - Wondertan
+      - gupadhyaya
+      - renaynay
+    rollkit:
+      - team:rollkit
+    devops:
+      - team:DevOps
+    node:
+      - team:celestia-node
+files:
+  '**':
+    - code-owners
+    - rollkit
+    - node
+  '.github/**':
+    - devops
+options:
+  ignore_draft: true
+  ignored_keywords:
+    - WIP
+  number_of_reviewers: 3
