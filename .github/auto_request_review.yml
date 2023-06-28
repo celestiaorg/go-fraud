@@ -10,7 +10,7 @@ reviewers:
     rollkit:
       - team:rollkit
     devops:
-      - team:DevOps
+      - team:devops
     node:
       - team:celestia-node
 files:
