@@ -44,11 +44,13 @@ type ProofService struct {
 	storesLk sync.RWMutex
 	stores   map[fraud.ProofType]datastore.Datastore
 
-	pubsub *pubsub.PubSub
-	host   host.Host
-	getter fraud.HeaderFetcher
-	ds     datastore.Datastore
+	verifiersLk sync.RWMutex
+	verifiers   map[fraud.ProofType]fraud.Verifier
 
+	pubsub        *pubsub.PubSub
+	host          host.Host
+	getter        fraud.HeaderFetcher
+	ds            datastore.Datastore
 	syncerEnabled bool
 }
 
@@ -64,6 +66,7 @@ func NewProofService(
 		pubsub:        p,
 		host:          host,
 		getter:        getter,
+		verifiers:     make(map[fraud.ProofType]fraud.Verifier),
 		topics:        make(map[fraud.ProofType]*pubsub.Topic),
 		stores:        make(map[fraud.ProofType]datastore.Datastore),
 		ds:            ds,
@@ -144,6 +147,16 @@ func (f *ProofService) Broadcast(ctx context.Context, p fraud.Proof) error {
 	return t.Publish(ctx, bin)
 }
 
+func (f *ProofService) AddVerifier(proofType fraud.ProofType, verifier fraud.Verifier) error {
+	f.verifiersLk.Lock()
+	defer f.verifiersLk.Unlock()
+	if _, ok := f.verifiers[proofType]; ok {
+		return fmt.Errorf("verifier for proof type %s already exist", proofType)
+	}
+	f.verifiers[proofType] = verifier
+	return nil
+}
+
 // processIncoming encompasses the logic for validating fraud proofs.
 func (f *ProofService) processIncoming(
 	ctx context.Context,
@@ -187,6 +200,23 @@ func (f *ProofService) processIncoming(
 			"err", err, "proofType", proof.Type(), "height", proof.Height())
 		return pubsub.ValidationIgnore
 	}
+
+	// execute the verifier for proof type if exists
+	f.verifiersLk.RLock()
+	verifier, ok := f.verifiers[proofType]
+	f.verifiersLk.RUnlock()
+	if ok {
+		status, err := verifier(proof)
+		if err != nil {
+			log.Errorw("failed to run the verifier", "err", err, "proofType", proof.Type())
+			return pubsub.ValidationReject
+		}
+		if !status {
+			log.Errorw("invalid fraud proof", "proofType", proof.Type())
+			return pubsub.ValidationReject
+		}
+	}
+
 	// validate the fraud proof.
 	// Peer will be added to black list if the validation fails.
 	err = proof.Validate(extHeader)

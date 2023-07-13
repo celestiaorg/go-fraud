@@ -9,6 +9,9 @@ import (
 // HeaderFetcher aliases a function that is used to fetch an ExtendedHeader from store by height.
 type HeaderFetcher func(context.Context, uint64) (header.Header, error)
 
+// Verifier is a function that is executed as part of processing the incoming fraud proof
+type Verifier func(fraud Proof) (bool, error)
+
 // ProofUnmarshaler aliases a function that parses data to `Proof`.
 type ProofUnmarshaler func([]byte) (Proof, error)
 
@@ -35,6 +38,10 @@ type Broadcaster interface {
 type Subscriber interface {
 	// Subscribe allows to subscribe on a Proof pub sub topic by its type.
 	Subscribe(ProofType) (Subscription, error)
+	// AddVerifier allows for supplying additional verification logic which
+	// will be run as part of processing the incoming fraud proof.
+	// This only supplements the main validation done by Proof.Validate
+	AddVerifier(ProofType, Verifier) error
 }
 
 // Getter encompasses the behavior to fetch stored fraud proofs.
