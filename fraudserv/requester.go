@@ -19,7 +19,7 @@ const (
 	readDeadline = time.Minute
 )
 
-func (f *ProofService) requestProofs(
+func (f *ProofService[H]) requestProofs(
 	ctx context.Context,
 	id protocol.ID,
 	pid peer.ID,

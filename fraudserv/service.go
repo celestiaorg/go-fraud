@@ -18,6 +18,8 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 
+	"github.com/celestiaorg/go-header"
+
 	"github.com/celestiaorg/go-fraud"
 )
 
@@ -32,7 +34,7 @@ const fraudRequests = 5
 
 // ProofService is responsible for validating and propagating Fraud Proofs.
 // It implements the Service interface.
-type ProofService struct {
+type ProofService[H header.Header[H]] struct {
 	networkID string
 
 	ctx    context.Context
@@ -45,28 +47,31 @@ type ProofService struct {
 	stores   map[fraud.ProofType]datastore.Datastore
 
 	verifiersLk sync.RWMutex
-	verifiers   map[fraud.ProofType]fraud.Verifier
+	verifiers   map[fraud.ProofType]fraud.Verifier[H]
 
 	pubsub        *pubsub.PubSub
 	host          host.Host
-	getter        fraud.HeaderFetcher
+	getter        fraud.HeaderFetcher[H]
+	unmarshal     fraud.ProofUnmarshaler[H]
 	ds            datastore.Datastore
 	syncerEnabled bool
 }
 
-func NewProofService(
+func NewProofService[H header.Header[H]](
 	p *pubsub.PubSub,
 	host host.Host,
-	getter fraud.HeaderFetcher,
+	getter fraud.HeaderFetcher[H],
+	unmarshal fraud.ProofUnmarshaler[H],
 	ds datastore.Datastore,
 	syncerEnabled bool,
 	networkID string,
-) *ProofService {
-	return &ProofService{
+) *ProofService[H] {
+	return &ProofService[H]{
 		pubsub:        p,
 		host:          host,
 		getter:        getter,
-		verifiers:     make(map[fraud.ProofType]fraud.Verifier),
+		unmarshal:     unmarshal,
+		verifiers:     make(map[fraud.ProofType]fraud.Verifier[H]),
 		topics:        make(map[fraud.ProofType]*pubsub.Topic),
 		stores:        make(map[fraud.ProofType]datastore.Datastore),
 		ds:            ds,
@@ -76,8 +81,8 @@ func NewProofService(
 }
 
 // registerProofTopics registers proofTypes as pubsub topics to be joined.
-func (f *ProofService) registerProofTopics(proofTypes ...fraud.ProofType) error {
-	for _, proofType := range proofTypes {
+func (f *ProofService[H]) registerProofTopics() error {
+	for _, proofType := range f.unmarshal.List() {
 		t, err := join(f.pubsub, proofType, f.networkID, f.processIncoming)
 		if err != nil {
 			return err
@@ -91,9 +96,9 @@ func (f *ProofService) registerProofTopics(proofTypes ...fraud.ProofType) error 
 
 // Start joins fraud proofs topics, sets the stream handler for fraudProtocolID and starts syncing
 // if syncer is enabled.
-func (f *ProofService) Start(context.Context) error {
+func (f *ProofService[H]) Start(context.Context) error {
 	f.ctx, f.cancel = context.WithCancel(context.Background())
-	if err := f.registerProofTopics(fraud.Registered()...); err != nil {
+	if err := f.registerProofTopics(); err != nil {
 		return err
 	}
 	id := protocolID(f.networkID)
@@ -107,7 +112,7 @@ func (f *ProofService) Start(context.Context) error {
 }
 
 // Stop removes the stream handler and cancels the underlying ProofService
-func (f *ProofService) Stop(context.Context) (err error) {
+func (f *ProofService[H]) Stop(context.Context) (err error) {
 	f.host.RemoveStreamHandler(protocolID(f.networkID))
 	f.topicsLk.Lock()
 	for tp, topic := range f.topics {
@@ -119,7 +124,7 @@ func (f *ProofService) Stop(context.Context) (err error) {
 	return
 }
 
-func (f *ProofService) Subscribe(proofType fraud.ProofType) (_ fraud.Subscription, err error) {
+func (f *ProofService[H]) Subscribe(proofType fraud.ProofType) (_ fraud.Subscription[H], err error) {
 	f.topicsLk.Lock()
 	defer f.topicsLk.Unlock()
 	t, ok := f.topics[proofType]
@@ -130,10 +135,10 @@ func (f *ProofService) Subscribe(proofType fraud.ProofType) (_ fraud.Subscriptio
 	if err != nil {
 		return nil, err
 	}
-	return &subscription{subs}, nil
+	return &subscription[H]{subs}, nil
 }
 
-func (f *ProofService) Broadcast(ctx context.Context, p fraud.Proof) error {
+func (f *ProofService[H]) Broadcast(ctx context.Context, p fraud.Proof[H]) error {
 	bin, err := p.MarshalBinary()
 	if err != nil {
 		return err
@@ -147,7 +152,7 @@ func (f *ProofService) Broadcast(ctx context.Context, p fraud.Proof) error {
 	return t.Publish(ctx, bin)
 }
 
-func (f *ProofService) AddVerifier(proofType fraud.ProofType, verifier fraud.Verifier) error {
+func (f *ProofService[H]) AddVerifier(proofType fraud.ProofType, verifier fraud.Verifier[H]) error {
 	f.verifiersLk.Lock()
 	defer f.verifiersLk.Unlock()
 	if _, ok := f.verifiers[proofType]; ok {
@@ -157,8 +162,8 @@ func (f *ProofService) AddVerifier(proofType fraud.ProofType, verifier fraud.Ver
 	return nil
 }
 
-// processIncoming encompasses the logic for validating fraud proofs.
-func (f *ProofService) processIncoming(
+// processIncoming encompasses the logic for validating fraud proofTypes.
+func (f *ProofService[H]) processIncoming(
 	ctx context.Context,
 	proofType fraud.ProofType,
 	from peer.ID,
@@ -171,7 +176,7 @@ func (f *ProofService) processIncoming(
 
 	// unmarshal message to the Proof.
 	// Peer will be added to black list if unmarshalling fails.
-	proof, err := fraud.Unmarshal(proofType, msg.Data)
+	proof, err := f.unmarshal.Unmarshal(proofType, msg.Data)
 	if err != nil {
 		log.Errorw("unmarshalling failed", "err", err)
 		if !errors.Is(err, &fraud.ErrNoUnmarshaler{}) {
@@ -246,7 +251,7 @@ func (f *ProofService) processIncoming(
 	return pubsub.ValidationAccept
 }
 
-func (f *ProofService) Get(ctx context.Context, proofType fraud.ProofType) ([]fraud.Proof, error) {
+func (f *ProofService[H]) Get(ctx context.Context, proofType fraud.ProofType) ([]fraud.Proof[H], error) {
 	f.storesLk.Lock()
 	store, ok := f.stores[proofType]
 	if !ok {
@@ -255,11 +260,11 @@ func (f *ProofService) Get(ctx context.Context, proofType fraud.ProofType) ([]fr
 	}
 	f.storesLk.Unlock()
 
-	return getAll(ctx, store, proofType)
+	return getAll(ctx, store, proofType, f.unmarshal)
 }
 
 // put adds a fraud proof to the local storage.
-func (f *ProofService) put(ctx context.Context, proofType fraud.ProofType, hash string, data []byte) error {
+func (f *ProofService[H]) put(ctx context.Context, proofType fraud.ProofType, hash string, data []byte) error {
 	f.storesLk.Lock()
 	store, ok := f.stores[proofType]
 	if !ok {
@@ -271,7 +276,7 @@ func (f *ProofService) put(ctx context.Context, proofType fraud.ProofType, hash 
 }
 
 // verifyLocal checks if a fraud proof has been stored locally.
-func (f *ProofService) verifyLocal(ctx context.Context, proofType fraud.ProofType, hash string, data []byte) bool {
+func (f *ProofService[H]) verifyLocal(ctx context.Context, proofType fraud.ProofType, hash string, data []byte) bool {
 	f.storesLk.RLock()
 	storage, ok := f.stores[proofType]
 	f.storesLk.RUnlock()

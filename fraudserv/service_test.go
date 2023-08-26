@@ -13,10 +13,9 @@ import (
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/celestiaorg/go-header"
 	"github.com/celestiaorg/go-header/headertest"
 
-	gofraud "github.com/celestiaorg/go-fraud"
+	"github.com/celestiaorg/go-fraud"
 	"github.com/celestiaorg/go-fraud/fraudtest"
 )
 
@@ -27,7 +26,7 @@ func TestService_SubscribeBroadcastValid(t *testing.T) {
 	serv := newTestService(ctx, t, false)
 	require.NoError(t, serv.Start(ctx))
 
-	fraud := fraudtest.NewValidProof()
+	fraud := fraudtest.NewValidProof[*headertest.DummyHeader]()
 	sub, err := serv.Subscribe(fraud.Type())
 	require.NoError(t, err)
 	defer sub.Cancel()
@@ -44,38 +43,38 @@ func TestService_SubscribeBroadcastWithVerifiers(t *testing.T) {
 	serv := newTestService(ctx, t, false)
 	require.NoError(t, serv.Start(ctx))
 
-	fraud := fraudtest.NewValidProof()
-	require.NoError(t, serv.AddVerifier(fraud.Type(), func(fraudProof gofraud.Proof) (bool, error) {
+	frd := fraudtest.NewValidProof[*headertest.DummyHeader]()
+	require.NoError(t, serv.AddVerifier(frd.Type(), func(fraudProof fraud.Proof[*headertest.DummyHeader]) (bool, error) {
 		return true, nil
 	}))
 
 	// test for error while adding the verifier for the second time
-	require.Error(t, serv.AddVerifier(fraud.Type(), func(fraudProof gofraud.Proof) (bool, error) {
+	require.Error(t, serv.AddVerifier(frd.Type(), func(fraudProof fraud.Proof[*headertest.DummyHeader]) (bool, error) {
 		return true, nil
 	}))
-	sub, err := serv.Subscribe(fraud.Type())
+	sub, err := serv.Subscribe(frd.Type())
 	require.NoError(t, err)
 	defer sub.Cancel()
 
-	require.NoError(t, serv.Broadcast(ctx, fraud))
+	require.NoError(t, serv.Broadcast(ctx, frd))
 	_, err = sub.Proof(ctx)
 	require.NoError(t, err)
 
 	// test for invalid fraud proof verifier
 	serv = newTestService(ctx, t, false)
 	require.NoError(t, serv.Start(ctx))
-	require.NoError(t, serv.AddVerifier(fraud.Type(), func(fraudProof gofraud.Proof) (bool, error) {
+	require.NoError(t, serv.AddVerifier(frd.Type(), func(fraudProof fraud.Proof[*headertest.DummyHeader]) (bool, error) {
 		return false, nil
 	}))
-	require.Error(t, serv.Broadcast(ctx, fraud))
+	require.Error(t, serv.Broadcast(ctx, frd))
 
 	// test for error case of fraud proof verifier
 	serv = newTestService(ctx, t, false)
 	require.NoError(t, serv.Start(ctx))
-	require.NoError(t, serv.AddVerifier(fraud.Type(), func(fraudProof gofraud.Proof) (bool, error) {
+	require.NoError(t, serv.AddVerifier(frd.Type(), func(fraudProof fraud.Proof[*headertest.DummyHeader]) (bool, error) {
 		return true, errors.New("throws error")
 	}))
-	require.Error(t, serv.Broadcast(ctx, fraud))
+	require.Error(t, serv.Broadcast(ctx, frd))
 }
 
 func TestService_SubscribeBroadcastInvalid(t *testing.T) {
@@ -85,7 +84,7 @@ func TestService_SubscribeBroadcastInvalid(t *testing.T) {
 	serv := newTestService(ctx, t, false)
 	require.NoError(t, serv.Start(ctx))
 
-	fraud := fraudtest.NewInvalidProof()
+	fraud := fraudtest.NewInvalidProof[*headertest.DummyHeader]()
 	sub, err := serv.Subscribe(fraud.Type())
 	require.NoError(t, err)
 	defer sub.Cancel()
@@ -123,7 +122,7 @@ func TestService_ReGossiping(t *testing.T) {
 	require.NoError(t, servB.Start(ctx))
 	require.NoError(t, servC.Start(ctx))
 
-	fraud := fraudtest.NewValidProof()
+	fraud := fraudtest.NewValidProof[*headertest.DummyHeader]()
 	subsA, err := servA.Subscribe(fraud.Type())
 	require.NoError(t, err)
 	defer subsA.Cancel()
@@ -161,7 +160,7 @@ func TestService_Get(t *testing.T) {
 	serv := newTestService(ctx, t, false)
 	require.NoError(t, serv.Start(ctx))
 
-	fraud := fraudtest.NewValidProof()
+	fraud := fraudtest.NewValidProof[*headertest.DummyHeader]()
 	_, err := serv.Get(ctx, fraud.Type()) // try to fetch proof
 	require.Error(t, err)                 // storage is empty so should error
 
@@ -189,7 +188,7 @@ func TestService_Sync(t *testing.T) {
 	servA := newTestServiceWithHost(ctx, t, net.Hosts()[0], false)
 	require.NoError(t, servA.Start(ctx))
 
-	fraud := fraudtest.NewValidProof()
+	fraud := fraudtest.NewValidProof[*headertest.DummyHeader]()
 	err = servA.Broadcast(ctx, fraud) // broadcasting ensures the fraud gets stored on servA
 	require.NoError(t, err)
 
@@ -207,23 +206,29 @@ func TestService_Sync(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func newTestService(ctx context.Context, t *testing.T, enabledSyncer bool) *ProofService {
+func newTestService(ctx context.Context, t *testing.T, enabledSyncer bool) *ProofService[*headertest.DummyHeader] {
 	net, err := mocknet.FullMeshLinked(1)
 	require.NoError(t, err)
 	return newTestServiceWithHost(ctx, t, net.Hosts()[0], enabledSyncer)
 }
 
-func newTestServiceWithHost(ctx context.Context, t *testing.T, host host.Host, enabledSyncer bool) *ProofService {
+func newTestServiceWithHost(
+	ctx context.Context,
+	t *testing.T,
+	host host.Host,
+	enabledSyncer bool,
+) *ProofService[*headertest.DummyHeader] {
 	ps, err := pubsub.NewFloodSub(ctx, host, pubsub.WithMessageSignaturePolicy(pubsub.StrictNoSign))
 	require.NoError(t, err)
 
 	store := headertest.NewDummyStore(t)
-	serv := NewProofService(
+	serv := NewProofService[*headertest.DummyHeader](
 		ps,
 		host,
-		func(ctx context.Context, u uint64) (header.Header, error) {
+		func(ctx context.Context, u uint64) (*headertest.DummyHeader, error) {
 			return store.GetByHeight(ctx, u)
 		},
+		unmarshaler,
 		sync.MutexWrap(datastore.NewMapDatastore()),
 		enabledSyncer,
 		"private",
@@ -236,4 +241,13 @@ func newTestServiceWithHost(ctx context.Context, t *testing.T, host host.Host, e
 		}
 	})
 	return serv
+}
+
+var unmarshaler = &fraud.MultiUnmarshaler[*headertest.DummyHeader]{
+	Unmarshalers: map[fraud.ProofType]func([]byte) (fraud.Proof[*headertest.DummyHeader], error){
+		fraudtest.DummyProofType: func(data []byte) (fraud.Proof[*headertest.DummyHeader], error) {
+			proof := &fraudtest.DummyProof[*headertest.DummyHeader]{}
+			return proof, proof.UnmarshalBinary(data)
+		},
+	},
 }
