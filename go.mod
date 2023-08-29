@@ -3,7 +3,7 @@ module github.com/celestiaorg/go-fraud
 go 1.20
 
 require (
-	github.com/celestiaorg/go-header v0.2.12
+	github.com/celestiaorg/go-header v0.3.0
 	github.com/celestiaorg/go-libp2p-messenger v0.2.0
 	github.com/gogo/protobuf v1.3.2
 	github.com/ipfs/go-datastore v0.6.0
@@ -88,5 +88,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
 )
-
-replace github.com/celestiaorg/go-header => ../go-header
