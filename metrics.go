@@ -7,14 +7,15 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+
+	"github.com/celestiaorg/go-header"
 )
 
 var meter = otel.Meter("fraud")
 
 // WithMetrics enables metrics to monitor fraud proofs.
-func WithMetrics(store Getter) {
-	proofTypes := registeredProofTypes()
-	for _, proofType := range proofTypes {
+func WithMetrics[H header.Header[H]](store Getter[H], unmarshaler ProofUnmarshaler[H]) {
+	for _, proofType := range unmarshaler.List() {
 		counter, err := meter.Int64ObservableGauge(string(proofType),
 			metric.WithDescription("Stored fraud proof"),
 		)

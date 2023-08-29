@@ -22,9 +22,9 @@ import (
 // syncFraudProofs encompasses the behavior for fetching fraud proofs from other peers.
 // syncFraudProofs subscribes to EvtPeerIdentificationCompleted to get newly connected peers
 // to request fraud proofs from and request fraud proofs from them.
-// After fraud proofs are received, they are published to all local subscriptions for verification
-// order to be verified.
-func (f *ProofService) syncFraudProofs(ctx context.Context, id protocol.ID) {
+// After fraud proofs are received, they are published to all local subscriptions for
+// verification order to be verified.
+func (f *ProofService[H]) syncFraudProofs(ctx context.Context, id protocol.ID) {
 	log.Debug("start fetching fraud proofs")
 	// subscribe to new peer connections that we can request fraud proofs from
 	sub, err := f.host.EventBus().Subscribe(&event.EvtPeerIdentificationCompleted{})
@@ -111,7 +111,7 @@ func (f *ProofService) syncFraudProofs(ctx context.Context, id protocol.ID) {
 }
 
 // handleFraudMessageRequest handles an incoming FraudMessageRequest.
-func (f *ProofService) handleFraudMessageRequest(stream network.Stream) {
+func (f *ProofService[H]) handleFraudMessageRequest(stream network.Stream) {
 	req := &pb.FraudMessageRequest{}
 	if err := stream.SetReadDeadline(time.Now().Add(readDeadline)); err != nil {
 		log.Warn(err)

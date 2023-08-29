@@ -10,6 +10,8 @@ import (
 	"github.com/ipfs/go-datastore/namespace"
 	q "github.com/ipfs/go-datastore/query"
 
+	"github.com/celestiaorg/go-header"
+
 	"github.com/celestiaorg/go-fraud"
 )
 
@@ -38,7 +40,12 @@ func getByHash(ctx context.Context, ds datastore.Datastore, hash string) ([]byte
 }
 
 // getAll queries all Fraud Proofs by their type.
-func getAll(ctx context.Context, ds datastore.Datastore, proofType fraud.ProofType) ([]fraud.Proof, error) {
+func getAll[H header.Header[H]](
+	ctx context.Context,
+	ds datastore.Datastore,
+	proofType fraud.ProofType,
+	registry fraud.ProofUnmarshaler[H],
+) ([]fraud.Proof[H], error) {
 	entries, err := query(ctx, ds, q.Query{})
 	if err != nil {
 		return nil, err
@@ -46,9 +53,9 @@ func getAll(ctx context.Context, ds datastore.Datastore, proofType fraud.ProofTy
 	if len(entries) == 0 {
 		return nil, datastore.ErrNotFound
 	}
-	proofs := make([]fraud.Proof, 0)
+	proofs := make([]fraud.Proof[H], 0)
 	for _, data := range entries {
-		proof, err := fraud.Unmarshal(proofType, data.Value)
+		proof, err := registry.Unmarshal(proofType, data.Value)
 		if err != nil {
 			if errors.Is(err, &fraud.ErrNoUnmarshaler{}) {
 				return nil, err
