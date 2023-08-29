@@ -4,7 +4,7 @@ on:
   workflow_call:
 
 env:
-  GO_VERSION: "1.20"
+  GO_VERSION: "1.21"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -25,7 +25,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3.6.0
         with:
-          version: v1.52.2
+          version: v1.54.2
 
   go_mod_tidy_check:
     name: Go Mod Tidy Check
