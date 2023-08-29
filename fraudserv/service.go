@@ -80,7 +80,7 @@ func NewProofService[H header.Header[H]](
 	}
 }
 
-// registerProofTopics registers proofTypes as pubsub topics to be joined.
+// registerProofTopics registers  as pubsub topics to be joined.
 func (f *ProofService[H]) registerProofTopics() error {
 	for _, proofType := range f.unmarshal.List() {
 		t, err := join(f.pubsub, proofType, f.networkID, f.processIncoming)
@@ -162,7 +162,7 @@ func (f *ProofService[H]) AddVerifier(proofType fraud.ProofType, verifier fraud.
 	return nil
 }
 
-// processIncoming encompasses the logic for validating fraud proofTypes.
+// processIncoming encompasses the logic for validating fraud proofs.
 func (f *ProofService[H]) processIncoming(
 	ctx context.Context,
 	proofType fraud.ProofType,

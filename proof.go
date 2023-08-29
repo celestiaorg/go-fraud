@@ -36,8 +36,8 @@ type Proof[H header.Header[H]] interface {
 
 // OnProof subscribes to the given Fraud Proof topic via the given Subscriber.
 // In case a Fraud Proof is received, then the given handle function will be invoked.
-func OnProof[H header.Header[H]](ctx context.Context, suber Subscriber[H], p ProofType, handle func(proof Proof[H])) {
-	subscription, err := suber.Subscribe(p)
+func OnProof[H header.Header[H]](ctx context.Context, sub Subscriber[H], p ProofType, handle func(proof Proof[H])) {
+	subscription, err := sub.Subscribe(p)
 	if err != nil {
 		return
 	}

@@ -4,6 +4,8 @@ import (
 	"github.com/celestiaorg/go-header"
 )
 
+// MultiUnmarshaler contains a mapping of all registered proof
+// types to their unmarshal functions.
 type MultiUnmarshaler[H header.Header[H]] struct {
 	Unmarshalers map[ProofType]func([]byte) (Proof[H], error)
 }

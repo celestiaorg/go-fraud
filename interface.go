@@ -12,7 +12,8 @@ type HeaderFetcher[H header.Header[H]] func(context.Context, uint64) (H, error)
 // Verifier is a function that is executed as part of processing the incoming fraud proof
 type Verifier[H header.Header[H]] func(fraud Proof[H]) (bool, error)
 
-// ProofUnmarshaler
+// ProofUnmarshaler contains methods that allow an instance of ProofService
+// to access unmarshalers for various ProofTypes.
 type ProofUnmarshaler[H header.Header[H]] interface {
 	// List supported ProofTypes.
 	List() []ProofType
