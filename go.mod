@@ -11,9 +11,9 @@ require (
 	github.com/libp2p/go-libp2p v0.30.0
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
 	github.com/stretchr/testify v1.8.4
-	go.opentelemetry.io/otel v1.16.0
-	go.opentelemetry.io/otel/metric v1.16.0
-	go.opentelemetry.io/otel/trace v1.16.0
+	go.opentelemetry.io/otel v1.17.0
+	go.opentelemetry.io/otel/metric v1.17.0
+	go.opentelemetry.io/otel/trace v1.17.0
 )
 
 require (
