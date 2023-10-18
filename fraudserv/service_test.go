@@ -228,6 +228,9 @@ func newTestServiceWithHost(
 		func(ctx context.Context, u uint64) (*headertest.DummyHeader, error) {
 			return store.GetByHeight(ctx, u)
 		},
+		func(ctx context.Context) (*headertest.DummyHeader, error) {
+			return store.Head(ctx)
+		},
 		unmarshaler,
 		sync.MutexWrap(datastore.NewMapDatastore()),
 		enabledSyncer,
