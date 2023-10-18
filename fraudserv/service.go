@@ -213,7 +213,7 @@ func (f *ProofService[H]) processIncoming(
 	}
 
 	if head.Height()+headersThreshold < proof.Height() {
-		err = fmt.Errorf("received proof above the max threshhold."+
+		err = fmt.Errorf("received proof above the max threshold."+
 			"maxHeight: %d, proofHeight: %d, proofType: %s",
 			head.Height()+headersThreshold,
 			proof.Height(),
