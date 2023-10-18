@@ -9,8 +9,8 @@ import (
 // HeaderFetcher aliases a function that is used to fetch an ExtendedHeader from store by height.
 type HeaderFetcher[H header.Header[H]] func(context.Context, uint64) (H, error)
 
-// HeadFetcher aliases a function that is used to get current network head.
-type HeadFetcher[H header.Header[H]] func(ctx context.Context) (H, error)
+// HeadGetter aliases a function that is used to get current network head.
+type HeadGetter[H header.Header[H]] func(ctx context.Context) (H, error)
 
 // Verifier is a function that is executed as part of processing the incoming fraud proof
 type Verifier[H header.Header[H]] func(fraud Proof[H]) (bool, error)

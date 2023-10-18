@@ -33,9 +33,9 @@ const (
 	// other peers.
 	fraudRequests = 5
 
-	// headersThreshold specifies the maximum allowable height of the Proof
+	// headThreshold specifies the maximum allowable height of the Proof
 	// relative to the network head to be verified.
-	headersThreshold uint64 = 20
+	headThreshold uint64 = 20
 )
 
 // ProofService is responsible for validating and propagating Fraud Proofs.
@@ -58,7 +58,7 @@ type ProofService[H header.Header[H]] struct {
 	pubsub        *pubsub.PubSub
 	host          host.Host
 	headerGetter  fraud.HeaderFetcher[H]
-	headGetter    fraud.HeadFetcher[H]
+	headGetter    fraud.HeadGetter[H]
 	unmarshal     fraud.ProofUnmarshaler[H]
 	ds            datastore.Datastore
 	syncerEnabled bool
@@ -68,7 +68,7 @@ func NewProofService[H header.Header[H]](
 	p *pubsub.PubSub,
 	host host.Host,
 	headerGetter fraud.HeaderFetcher[H],
-	headGetter fraud.HeadFetcher[H],
+	headGetter fraud.HeadGetter[H],
 	unmarshal fraud.ProofUnmarshaler[H],
 	ds datastore.Datastore,
 	syncerEnabled bool,
@@ -212,10 +212,10 @@ func (f *ProofService[H]) processIncoming(
 		return pubsub.ValidationIgnore
 	}
 
-	if head.Height()+headersThreshold < proof.Height() {
+	if head.Height()+headThreshold < proof.Height() {
 		err = fmt.Errorf("received proof above the max threshold."+
 			"maxHeight: %d, proofHeight: %d, proofType: %s",
-			head.Height()+headersThreshold,
+			head.Height()+headThreshold,
 			proof.Height(),
 			proof.Type(),
 		)
