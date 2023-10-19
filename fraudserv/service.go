@@ -28,9 +28,15 @@ var (
 	tracer = otel.Tracer("fraudserv")
 )
 
-// fraudRequests is the amount of external requests that will be tried to get fraud proofs from
-// other peers.
-const fraudRequests = 5
+const (
+	// fraudRequests is the amount of external requests that will be tried to get fraud proofs from
+	// other peers.
+	fraudRequests = 5
+
+	// headThreshold specifies the maximum allowable height of the Proof
+	// relative to the network head to be verified.
+	headThreshold uint64 = 20
+)
 
 // ProofService is responsible for validating and propagating Fraud Proofs.
 // It implements the Service interface.
@@ -51,7 +57,8 @@ type ProofService[H header.Header[H]] struct {
 
 	pubsub        *pubsub.PubSub
 	host          host.Host
-	getter        fraud.HeaderFetcher[H]
+	headerGetter  fraud.HeaderFetcher[H]
+	headGetter    fraud.HeadGetter[H]
 	unmarshal     fraud.ProofUnmarshaler[H]
 	ds            datastore.Datastore
 	syncerEnabled bool
@@ -60,7 +67,8 @@ type ProofService[H header.Header[H]] struct {
 func NewProofService[H header.Header[H]](
 	p *pubsub.PubSub,
 	host host.Host,
-	getter fraud.HeaderFetcher[H],
+	headerGetter fraud.HeaderFetcher[H],
+	headGetter fraud.HeadGetter[H],
 	unmarshal fraud.ProofUnmarshaler[H],
 	ds datastore.Datastore,
 	syncerEnabled bool,
@@ -69,7 +77,8 @@ func NewProofService[H header.Header[H]](
 	return &ProofService[H]{
 		pubsub:        p,
 		host:          host,
-		getter:        getter,
+		headerGetter:  headerGetter,
+		headGetter:    headGetter,
 		unmarshal:     unmarshal,
 		verifiers:     make(map[fraud.ProofType]fraud.Verifier[H]),
 		topics:        make(map[fraud.ProofType]*pubsub.Topic),
@@ -196,10 +205,29 @@ func (f *ProofService[H]) processIncoming(
 		return pubsub.ValidationIgnore
 	}
 
+	head, err := f.headGetter(ctx)
+	if err != nil {
+		log.Errorw("failed to fetch current network head to verify a fraud proof",
+			"err", err, "proofType", proof.Type(), "height", proof.Height())
+		return pubsub.ValidationIgnore
+	}
+
+	if head.Height()+headThreshold < proof.Height() {
+		err = fmt.Errorf("received proof above the max threshold."+
+			"maxHeight: %d, proofHeight: %d, proofType: %s",
+			head.Height()+headThreshold,
+			proof.Height(),
+			proof.Type(),
+		)
+		log.Error(err)
+		span.RecordError(err)
+		return pubsub.ValidationReject
+	}
+
 	msg.ValidatorData = proof
 
 	// fetch extended header in order to verify the fraud proof.
-	extHeader, err := f.getter(ctx, proof.Height())
+	extHeader, err := f.headerGetter(ctx, proof.Height())
 	if err != nil {
 		log.Errorw("failed to fetch header to verify a fraud proof",
 			"err", err, "proofType", proof.Type(), "height", proof.Height())
