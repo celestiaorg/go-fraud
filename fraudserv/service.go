@@ -177,7 +177,15 @@ func (f *ProofService[H]) processIncoming(
 	proofType fraud.ProofType,
 	from peer.ID,
 	msg *pubsub.Message,
-) pubsub.ValidationResult {
+) (res pubsub.ValidationResult) {
+	defer func() {
+		err := recover()
+		if err != nil {
+			log.Errorf("PANIC while processing a proof: %s", err)
+			res = pubsub.ValidationReject
+		}
+	}()
+
 	ctx, span := tracer.Start(ctx, "process_proof", trace.WithAttributes(
 		attribute.String("proof_type", string(proofType)),
 	))
