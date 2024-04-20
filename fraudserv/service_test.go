@@ -19,6 +19,28 @@ import (
 	"github.com/celestiaorg/go-fraud/fraudtest"
 )
 
+func TestService_processIncomingRecovery(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	t.Cleanup(cancel)
+
+	serv := newTestService(ctx, t, false)
+	require.NoError(t, serv.Start(ctx))
+
+	fraud := fraudtest.NewPanickingProof[*headertest.DummyHeader]()
+	sub, err := serv.Subscribe(fraud.Type())
+	require.NoError(t, err)
+	defer sub.Cancel()
+
+	err = serv.Broadcast(ctx, fraud)
+	require.Error(t, err)
+
+	ctx2, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
+	t.Cleanup(cancel)
+
+	_, err = sub.Proof(ctx2)
+	require.Error(t, err)
+}
+
 func TestService_SubscribeBroadcastValid(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	t.Cleanup(cancel)
