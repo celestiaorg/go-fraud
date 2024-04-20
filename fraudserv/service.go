@@ -178,18 +178,20 @@ func (f *ProofService[H]) processIncoming(
 	from peer.ID,
 	msg *pubsub.Message,
 ) (res pubsub.ValidationResult) {
-	defer func() {
-		err := recover()
-		if err != nil {
-			log.Errorf("PANIC while processing a proof: %s", err)
-			res = pubsub.ValidationReject
-		}
-	}()
-
 	ctx, span := tracer.Start(ctx, "process_proof", trace.WithAttributes(
 		attribute.String("proof_type", string(proofType)),
 	))
 	defer span.End()
+
+	defer func() {
+		r := recover()
+		if r != nil {
+			err := fmt.Errorf("PANIC while processing a proof: %s", r)
+			log.Error(err)
+			span.RecordError(err)
+			res = pubsub.ValidationReject
+		}
+	}()
 
 	// unmarshal message to the Proof.
 	// Peer will be added to black list if unmarshalling fails.
