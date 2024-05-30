@@ -11,7 +11,7 @@ type MultiUnmarshaler[H header.Header[H]] struct {
 }
 
 func (d MultiUnmarshaler[H]) List() []ProofType {
-	types := make([]ProofType, len(d.Unmarshalers))
+	types := make([]ProofType, 0, len(d.Unmarshalers))
 	for tp := range d.Unmarshalers {
 		types = append(types, tp)
 	}
