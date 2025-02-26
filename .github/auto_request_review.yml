@@ -18,8 +18,6 @@ files:
     - code-owners
     - rollkit
     - node
-  ".github/**":
-    - devops
 options:
   ignore_draft: true
   ignored_keywords:
