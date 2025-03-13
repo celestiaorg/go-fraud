@@ -15,9 +15,7 @@ import (
 	"github.com/celestiaorg/go-fraud"
 )
 
-var (
-	storePrefix = "fraud"
-)
+var storePrefix = "fraud"
 
 // put adds a Fraud Proof to the datastore with the given hash as the key.
 func put(ctx context.Context, ds datastore.Datastore, hash string, value []byte) error {
