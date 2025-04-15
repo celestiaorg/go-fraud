@@ -208,7 +208,7 @@ func (f *ProofService[H]) processIncoming(
 	if f.verifyLocal(ctx, proofType, hex.EncodeToString(proof.HeaderHash()), msg.Data) {
 		span.AddEvent("received_known_fraud_proof", trace.WithAttributes(
 			attribute.String("proof_type", string(proof.Type())),
-			attribute.Int64("block_height", int64(proof.Height())),
+			attribute.Int64("block_height", int64(proof.Height())), //nolint:gosec
 			attribute.String("block_hash", hex.EncodeToString(proof.HeaderHash())),
 			attribute.String("from_peer", from.String()),
 		))
@@ -273,7 +273,7 @@ func (f *ProofService[H]) processIncoming(
 
 	span.AddEvent("received_valid_proof", trace.WithAttributes(
 		attribute.String("proof_type", string(proof.Type())),
-		attribute.Int64("block_height", int64(proof.Height())),
+		attribute.Int64("block_height", int64(proof.Height())), //nolint:gosec
 		attribute.String("block_hash", hex.EncodeToString(proof.HeaderHash())),
 		attribute.String("from_peer", from.String()),
 	))
