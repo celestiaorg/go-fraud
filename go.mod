@@ -1,6 +1,6 @@
 module github.com/celestiaorg/go-fraud
 
-go 1.24
+go 1.24.0
 
 require (
 	github.com/celestiaorg/go-header v0.6.5
