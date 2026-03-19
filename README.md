@@ -4,16 +4,26 @@
 [![GitHub release](https://img.shields.io/github/v/release/celestiaorg/go-fraud.svg)](https://github.com/celestiaorg/go-fraud/releases)
 [![Go CI](https://github.com/celestiaorg/go-fraud/actions/workflows/go-ci.yml/badge.svg)](https://github.com/celestiaorg/go-fraud/actions/workflows/go-ci.yml)
 
-A Go library for broadcasting, subscribing to, and verifying fraud proofs over a libp2p network. It is designed for modular blockchain architectures where nodes need a protocol for detecting and propagating invalid block data.
+A Go library for broadcasting, subscribing to, and verifying fraud
+proofs over a libp2p network. It is designed for modular blockchain
+architectures where nodes need a protocol for detecting and
+propagating invalid block data.
 
 ## Overview
 
 go-fraud provides:
 
-- **Fraud proof interfaces** — generic `Proof`, `Service`, `Broadcaster`, `Subscriber`, and `Getter` interfaces that can be implemented for any proof type.
-- **libp2p-based proof service** (`fraudserv`) — a ready-to-use implementation that uses libp2p pubsub for proof propagation, a request/response protocol for syncing proofs from peers, and a local datastore for persistence.
-- **Test helpers** (`fraudtest`) — dummy proof types and a mock service for use in unit tests.
-- **OpenTelemetry instrumentation** — built-in tracing and metrics for proof processing.
+- **Fraud proof interfaces** — generic `Proof`, `Service`,
+  `Broadcaster`, `Subscriber`, and `Getter` interfaces that
+  can be implemented for any proof type.
+- **libp2p-based proof service** (`fraudserv`) — a ready-to-use
+  implementation that uses libp2p pubsub for proof propagation,
+  a request/response protocol for syncing proofs from peers,
+  and a local datastore for persistence.
+- **Test helpers** (`fraudtest`) — dummy proof types and a mock
+  service for use in unit tests.
+- **OpenTelemetry instrumentation** — built-in tracing and
+  metrics for proof processing.
 
 ## Installation
 

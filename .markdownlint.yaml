@@ -1,0 +1,8 @@
+# markdownlint configuration
+# https://github.com/DavidAnson/markdownlint/blob/main/schema/.markdownlint.yaml
+
+# MD013/line-length
+MD013:
+  line_length: 80
+  # Exclude lines that are entirely a link/image
+  stern: false
