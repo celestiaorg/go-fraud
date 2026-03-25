@@ -108,6 +108,7 @@ func (f *ProofService[H]) registerProofTopics() error {
 func (f *ProofService[H]) Start(context.Context) error {
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 	if err := f.registerProofTopics(); err != nil {
+		f.cancel()
 		return err
 	}
 	id := protocolID(f.networkID)
