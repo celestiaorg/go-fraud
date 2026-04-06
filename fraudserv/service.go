@@ -108,6 +108,7 @@ func (f *ProofService[H]) registerProofTopics() error {
 func (f *ProofService[H]) Start(context.Context) error {
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 	if err := f.registerProofTopics(); err != nil {
+		f.cancel()
 		return err
 	}
 	id := protocolID(f.networkID)
@@ -208,7 +209,7 @@ func (f *ProofService[H]) processIncoming(
 	if f.verifyLocal(ctx, proofType, hex.EncodeToString(proof.HeaderHash()), msg.Data) {
 		span.AddEvent("received_known_fraud_proof", trace.WithAttributes(
 			attribute.String("proof_type", string(proof.Type())),
-			attribute.Int("block_height", int(proof.Height())),
+			attribute.Int64("block_height", int64(proof.Height())), //nolint:gosec
 			attribute.String("block_hash", hex.EncodeToString(proof.HeaderHash())),
 			attribute.String("from_peer", from.String()),
 		))
@@ -273,7 +274,7 @@ func (f *ProofService[H]) processIncoming(
 
 	span.AddEvent("received_valid_proof", trace.WithAttributes(
 		attribute.String("proof_type", string(proof.Type())),
-		attribute.Int("block_height", int(proof.Height())),
+		attribute.Int64("block_height", int64(proof.Height())), //nolint:gosec
 		attribute.String("block_hash", hex.EncodeToString(proof.HeaderHash())),
 		attribute.String("from_peer", from.String()),
 	))
