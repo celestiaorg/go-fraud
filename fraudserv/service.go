@@ -28,9 +28,15 @@ var (
 	tracer = otel.Tracer("fraudserv")
 )
 
-// fraudRequests is the amount of external requests that will be tried to get fraud proofs from
-// other peers.
-const fraudRequests = 5
+const (
+	// fraudRequests is the amount of external requests that will be tried to get fraud proofs from
+	// other peers.
+	fraudRequests = 5
+
+	// headThreshold specifies the maximum allowable height of the Proof
+	// relative to the network head to be verified.
+	headThreshold uint64 = 20
+)
 
 // ProofService is responsible for validating and propagating Fraud Proofs.
 // It implements the Service interface.
@@ -51,7 +57,8 @@ type ProofService[H header.Header[H]] struct {
 
 	pubsub        *pubsub.PubSub
 	host          host.Host
-	getter        fraud.HeaderFetcher[H]
+	headerGetter  fraud.HeaderFetcher[H]
+	headGetter    fraud.HeadGetter[H]
 	unmarshal     fraud.ProofUnmarshaler[H]
 	ds            datastore.Datastore
 	syncerEnabled bool
@@ -60,7 +67,8 @@ type ProofService[H header.Header[H]] struct {
 func NewProofService[H header.Header[H]](
 	p *pubsub.PubSub,
 	host host.Host,
-	getter fraud.HeaderFetcher[H],
+	headerGetter fraud.HeaderFetcher[H],
+	headGetter fraud.HeadGetter[H],
 	unmarshal fraud.ProofUnmarshaler[H],
 	ds datastore.Datastore,
 	syncerEnabled bool,
@@ -69,7 +77,8 @@ func NewProofService[H header.Header[H]](
 	return &ProofService[H]{
 		pubsub:        p,
 		host:          host,
-		getter:        getter,
+		headerGetter:  headerGetter,
+		headGetter:    headGetter,
 		unmarshal:     unmarshal,
 		verifiers:     make(map[fraud.ProofType]fraud.Verifier[H]),
 		topics:        make(map[fraud.ProofType]*pubsub.Topic),
@@ -99,6 +108,7 @@ func (f *ProofService[H]) registerProofTopics() error {
 func (f *ProofService[H]) Start(context.Context) error {
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 	if err := f.registerProofTopics(); err != nil {
+		f.cancel()
 		return err
 	}
 	id := protocolID(f.networkID)
@@ -168,11 +178,21 @@ func (f *ProofService[H]) processIncoming(
 	proofType fraud.ProofType,
 	from peer.ID,
 	msg *pubsub.Message,
-) pubsub.ValidationResult {
+) (res pubsub.ValidationResult) {
 	ctx, span := tracer.Start(ctx, "process_proof", trace.WithAttributes(
 		attribute.String("proof_type", string(proofType)),
 	))
 	defer span.End()
+
+	defer func() {
+		r := recover()
+		if r != nil {
+			err := fmt.Errorf("PANIC while processing a proof: %s", r)
+			log.Error(err)
+			span.RecordError(err)
+			res = pubsub.ValidationReject
+		}
+	}()
 
 	// unmarshal message to the Proof.
 	// Peer will be added to black list if unmarshalling fails.
@@ -189,17 +209,36 @@ func (f *ProofService[H]) processIncoming(
 	if f.verifyLocal(ctx, proofType, hex.EncodeToString(proof.HeaderHash()), msg.Data) {
 		span.AddEvent("received_known_fraud_proof", trace.WithAttributes(
 			attribute.String("proof_type", string(proof.Type())),
-			attribute.Int("block_height", int(proof.Height())),
+			attribute.Int64("block_height", int64(proof.Height())), //nolint:gosec
 			attribute.String("block_hash", hex.EncodeToString(proof.HeaderHash())),
 			attribute.String("from_peer", from.String()),
 		))
 		return pubsub.ValidationIgnore
 	}
 
+	head, err := f.headGetter(ctx)
+	if err != nil {
+		log.Errorw("failed to fetch current network head to verify a fraud proof",
+			"err", err, "proofType", proof.Type(), "height", proof.Height())
+		return pubsub.ValidationIgnore
+	}
+
+	if head.Height()+headThreshold < proof.Height() {
+		err = fmt.Errorf("received proof above the max threshold."+
+			"maxHeight: %d, proofHeight: %d, proofType: %s",
+			head.Height()+headThreshold,
+			proof.Height(),
+			proof.Type(),
+		)
+		log.Error(err)
+		span.RecordError(err)
+		return pubsub.ValidationReject
+	}
+
 	msg.ValidatorData = proof
 
 	// fetch extended header in order to verify the fraud proof.
-	extHeader, err := f.getter(ctx, proof.Height())
+	extHeader, err := f.headerGetter(ctx, proof.Height())
 	if err != nil {
 		log.Errorw("failed to fetch header to verify a fraud proof",
 			"err", err, "proofType", proof.Type(), "height", proof.Height())
@@ -235,7 +274,7 @@ func (f *ProofService[H]) processIncoming(
 
 	span.AddEvent("received_valid_proof", trace.WithAttributes(
 		attribute.String("proof_type", string(proof.Type())),
-		attribute.Int("block_height", int(proof.Height())),
+		attribute.Int64("block_height", int64(proof.Height())), //nolint:gosec
 		attribute.String("block_hash", hex.EncodeToString(proof.HeaderHash())),
 		attribute.String("from_peer", from.String()),
 	))
