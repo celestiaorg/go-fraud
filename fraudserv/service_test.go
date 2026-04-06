@@ -19,6 +19,28 @@ import (
 	"github.com/celestiaorg/go-fraud/fraudtest"
 )
 
+func TestService_processIncomingRecovery(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	t.Cleanup(cancel)
+
+	serv := newTestService(ctx, t, false)
+	require.NoError(t, serv.Start(ctx))
+
+	fraud := fraudtest.NewPanickingProof[*headertest.DummyHeader]()
+	sub, err := serv.Subscribe(fraud.Type())
+	require.NoError(t, err)
+	defer sub.Cancel()
+
+	err = serv.Broadcast(ctx, fraud)
+	require.Error(t, err)
+
+	ctx2, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
+	t.Cleanup(cancel)
+
+	_, err = sub.Proof(ctx2)
+	require.Error(t, err)
+}
+
 func TestService_SubscribeBroadcastValid(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	t.Cleanup(cancel)
@@ -44,12 +66,12 @@ func TestService_SubscribeBroadcastWithVerifiers(t *testing.T) {
 	require.NoError(t, serv.Start(ctx))
 
 	frd := fraudtest.NewValidProof[*headertest.DummyHeader]()
-	require.NoError(t, serv.AddVerifier(frd.Type(), func(fraudProof fraud.Proof[*headertest.DummyHeader]) (bool, error) {
+	require.NoError(t, serv.AddVerifier(frd.Type(), func(fraud.Proof[*headertest.DummyHeader]) (bool, error) {
 		return true, nil
 	}))
 
 	// test for error while adding the verifier for the second time
-	require.Error(t, serv.AddVerifier(frd.Type(), func(fraudProof fraud.Proof[*headertest.DummyHeader]) (bool, error) {
+	require.Error(t, serv.AddVerifier(frd.Type(), func(fraud.Proof[*headertest.DummyHeader]) (bool, error) {
 		return true, nil
 	}))
 	sub, err := serv.Subscribe(frd.Type())
@@ -63,7 +85,7 @@ func TestService_SubscribeBroadcastWithVerifiers(t *testing.T) {
 	// test for invalid fraud proof verifier
 	serv = newTestService(ctx, t, false)
 	require.NoError(t, serv.Start(ctx))
-	require.NoError(t, serv.AddVerifier(frd.Type(), func(fraudProof fraud.Proof[*headertest.DummyHeader]) (bool, error) {
+	require.NoError(t, serv.AddVerifier(frd.Type(), func(fraud.Proof[*headertest.DummyHeader]) (bool, error) {
 		return false, nil
 	}))
 	require.Error(t, serv.Broadcast(ctx, frd))
@@ -71,7 +93,7 @@ func TestService_SubscribeBroadcastWithVerifiers(t *testing.T) {
 	// test for error case of fraud proof verifier
 	serv = newTestService(ctx, t, false)
 	require.NoError(t, serv.Start(ctx))
-	require.NoError(t, serv.AddVerifier(frd.Type(), func(fraudProof fraud.Proof[*headertest.DummyHeader]) (bool, error) {
+	require.NoError(t, serv.AddVerifier(frd.Type(), func(fraud.Proof[*headertest.DummyHeader]) (bool, error) {
 		return true, errors.New("throws error")
 	}))
 	require.Error(t, serv.Broadcast(ctx, frd))
