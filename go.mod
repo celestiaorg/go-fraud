@@ -3,7 +3,7 @@ module github.com/celestiaorg/go-fraud
 go 1.24.0
 
 require (
-	github.com/celestiaorg/go-header v0.6.5
+	github.com/celestiaorg/go-header v0.6.6
 	github.com/celestiaorg/go-libp2p-messenger v0.2.2
 	github.com/gogo/protobuf v1.3.2
 	github.com/ipfs/go-datastore v0.8.2
